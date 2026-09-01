@@ -95,6 +95,36 @@ Item {
       compare(parsed[1].id, "99")
     }
 
+    function test_only_canonical_steam_store_urls_survive() {
+      function urlFor(href) {
+        return Model.parseSearchPayload(payload(
+          '<a href="' + href + '" data-ds-appid="7" class="search_result_row">'
+          + '<span class="title">Bait</span></a>'))[0].url
+      }
+      compare(urlFor("https://store.steampowered.com/app/7/Ok/?snr=x"),
+              "https://store.steampowered.com/app/7/Ok/")
+      compare(urlFor("javascript:alert(1)"), Model.SEARCH_URL)
+      compare(urlFor("file:///etc/passwd"), Model.SEARCH_URL)
+      compare(urlFor("http://store.steampowered.com/app/7/"), Model.SEARCH_URL)
+      compare(urlFor("https://store.steampowered.com.evil.com/app/7/"), Model.SEARCH_URL)
+      compare(urlFor("https://store.steampowered.com@evil.com/app/7/"), Model.SEARCH_URL)
+      compare(urlFor("https://evil.com/app/7/"), Model.SEARCH_URL)
+    }
+
+    function test_remote_data_is_bounded() {
+      var rows = ""
+      for (var i = 1; i <= 250; i++) rows += row(i, "Game " + i)
+      compare(Model.parseSearchPayload(payload(rows, 250)).length, 200)
+
+      var long = Model.parseSearchPayload(payload(
+        row(1, new Array(400).join("x"))))
+      compare(long[0].title.length, 120)
+
+      var args = Model.fetchArgs(Model.RESULTS_URL)
+      verify(args.indexOf("--max-filesize") >= 0)
+      compare(Model.parseSearchPayload(new Array(4000010).join("y")), null)
+    }
+
     function test_first_snapshot_never_notifies() {
       var games = Model.parseSearchPayload(payload(row(1, "Hades")))
       var first = Model.transitionAlerts(Model.emptyWatchState(), games, true)

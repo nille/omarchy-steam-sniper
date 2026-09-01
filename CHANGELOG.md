@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.1.1
+
+Hardens everything parsed out of Steam's response, from marketplace review
+feedback.
+
+### Fixed
+
+- Store links are now allowlisted to canonical `https://store.steampowered.com`
+  URLs before they reach the browser launcher or a notification's `--exec`.
+  Anything else falls back to the Steam search page.
+- Bounded the remote response and the data parsed from it: 4 MB download cap,
+  200 rows, 120-character titles, 10-digit ids.
+
 ## 1.1.0
 
 Internal simplification. No change to what the widget does.

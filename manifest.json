@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "nille.steam-sniper",
   "name": "Steam Sniper",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "author": "nille",
   "license": "MIT",
   "description": "Notify when games are free on the Steam store.",

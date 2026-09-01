@@ -6,6 +6,13 @@ var RESULTS_URL = "https://store.steampowered.com/search/results/?" + FILTERS + 
 var USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 var STALE_AFTER_MS = 45 * 60 * 1000
 var BAR_ICON = "\u{F1B6}"
+var MAX_BYTES = 4000000
+var MAX_ROWS = 200
+var MAX_TITLE = 120
+// Everything parsed out of the response is attacker-controlled if Steam is
+// ever wrong: game.url reaches omarchy-launch-browser and the notification
+// --exec, so nothing but a canonical Steam store URL may leave here.
+var STORE_URL_RE = /^https:\/\/store\.steampowered\.com(\/[\w%.~/-]*)?$/i
 
 function normalizeCountry(value) {
   var cc = String(value || "").trim().toUpperCase()
@@ -34,6 +41,7 @@ function resultsUrl(country) {
 function fetchArgs(url) {
   return [
     "curl", "-fsS", "--compressed", "--max-time", "20",
+    "--max-filesize", String(MAX_BYTES),
     "-A", USER_AGENT,
     "-H", "Accept: application/json,text/html;q=0.9",
     "-H", "X-Requested-With: XMLHttpRequest",
@@ -49,7 +57,7 @@ function emptyWatchState() {
 // results_html blob. Anything else means we did not reach Steam.
 function parseSearchPayload(raw) {
   var text = String(raw || "").trim()
-  if (!text) return null
+  if (!text || text.length > MAX_BYTES) return null
   try {
     var data = JSON.parse(text)
     if (!data || typeof data !== "object" || Array.isArray(data)) return null
@@ -65,7 +73,7 @@ function parseSearchRows(html) {
   var text = String(html || "")
   var index = 0
 
-  while (true) {
+  while (games.length < MAX_ROWS) {
     var start = text.indexOf("<a", index)
     if (start < 0) break
     var tagEnd = text.indexOf(">", start)
@@ -101,7 +109,7 @@ function parseSearchRow(block) {
 }
 
 function firstId(value) {
-  var match = String(value || "").match(/\d+/)
+  var match = String(value || "").match(/\d{1,10}/)
   return match ? match[0] : ""
 }
 
@@ -114,7 +122,8 @@ function matchAttr(text, name) {
 function matchTitle(text) {
   var match = String(text || "").match(/<span[^>]*class="[^"]*\btitle\b[^"]*"[^>]*>([\s\S]*?)<\/span>/i)
   if (!match) return ""
-  return decodeHtml(match[1].replace(/<[^>]+>/g, "")).replace(/\s+/g, " ").trim()
+  return decodeHtml(match[1].replace(/<[^>]+>/g, ""))
+    .replace(/\s+/g, " ").trim().slice(0, MAX_TITLE)
 }
 
 function decodeHtml(value) {
@@ -129,12 +138,11 @@ function decodeHtml(value) {
     })
 }
 
+// Returns "" for anything that is not a canonical https Steam store URL, so
+// callers fall back to SEARCH_URL rather than launching what Steam sent.
 function cleanStoreUrl(href) {
-  var url = String(href || "").trim()
-  if (!url) return ""
-  var query = url.indexOf("?")
-  if (query >= 0) url = url.slice(0, query)
-  return url
+  var url = String(href || "").trim().split("?")[0].split("#")[0]
+  return STORE_URL_RE.test(url) ? url : ""
 }
 
 function parseSeen(raw) {
