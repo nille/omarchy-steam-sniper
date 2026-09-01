@@ -6,6 +6,7 @@ import Quickshell
 import Quickshell.Io
 import qs.Commons
 import qs.Ui
+import "." as SteamSniper
 import "Model.js" as Model
 
 // Watch Steam's free-specials search and notify when a newly free game
@@ -338,15 +339,18 @@ Panel {
           width: scrollArea.availableWidth
           spacing: Style.spacing.panelGap
 
-          PanelHero {
+          SteamSniper.WrappingPanelHero {
             width: parent.width
             title: Model.statusTitle(
               root.games, root.requestInFlight, root.lastError)
             meta: Model.statusDetail(
               root.games, root.requestInFlight, root.lastError, root.freshness)
-            detail: ""
             foreground: root.lastError && !root.hasGames ? root.urgent : root.foreground
             fontFamily: root.fontFamily
+            titleFontSize: Style.font.title
+            metaFontSize: Style.font.caption
+            iconGap: Style.space(14)
+            labelGap: Style.space(2)
 
             iconComponent: Component {
               Text {
