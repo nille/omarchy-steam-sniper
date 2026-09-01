@@ -1,9 +1,11 @@
 .pragma library
 
-var SEARCH_URL = "https://store.steampowered.com/search/?sort_by=_ASC&hwtype=0&maxprice=free&category1=998&supportedlang=english&specials=1"
-var RESULTS_URL = "https://store.steampowered.com/search/results/?query=&start=0&count=50&dynamic_data=&sort_by=_ASC&infinite=1&hwtype=0&maxprice=free&category1=998&supportedlang=english&specials=1&l=english"
+var FILTERS = "sort_by=_ASC&hwtype=0&maxprice=free&category1=998&supportedlang=english&specials=1"
+var SEARCH_URL = "https://store.steampowered.com/search/?" + FILTERS
+var RESULTS_URL = "https://store.steampowered.com/search/results/?" + FILTERS + "&query=&start=0&count=50&infinite=1&l=english"
 var USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 var STALE_AFTER_MS = 45 * 60 * 1000
+var BAR_ICON = "\u{F1B6}"
 
 function normalizeCountry(value) {
   var cc = String(value || "").trim().toUpperCase()
@@ -43,29 +45,17 @@ function emptyWatchState() {
   return { primed: false, ids: {} }
 }
 
+// Steam's infinite-scroll endpoint always answers with JSON carrying an
+// results_html blob. Anything else means we did not reach Steam.
 function parseSearchPayload(raw) {
   var text = String(raw || "").trim()
   if (!text) return null
-
-  var html = text
-  var total = null
-  var first = text.charAt(0)
-  if (first === "{" || first === "[") {
-    try {
-      var data = JSON.parse(text)
-      if (!data || typeof data !== "object" || Array.isArray(data)) return null
-      html = String(data.results_html || "")
-      if (data.total_count !== undefined && data.total_count !== null)
-        total = Math.max(0, Number(data.total_count) || 0)
-    } catch (e) {
-      return null
-    }
-  }
-
-  var games = parseSearchRows(html)
-  return {
-    games: games,
-    total: total === null ? games.length : total
+  try {
+    var data = JSON.parse(text)
+    if (!data || typeof data !== "object" || Array.isArray(data)) return null
+    return parseSearchRows(String(data.results_html || ""))
+  } catch (e) {
+    return null
   }
 }
 
@@ -98,20 +88,15 @@ function parseSearchRows(html) {
 }
 
 function parseSearchRow(block) {
-  var appId = matchAttr(block, "data-ds-appid")
-  var bundleId = matchAttr(block, "data-ds-bundleid")
-  var packageId = matchAttr(block, "data-ds-packageid")
-  var id = firstId(appId) || firstId(bundleId) || firstId(packageId)
+  var id = firstId(matchAttr(block, "data-ds-appid"))
+    || firstId(matchAttr(block, "data-ds-bundleid"))
+    || firstId(matchAttr(block, "data-ds-packageid"))
   if (!id) return null
 
-  var kind = firstId(appId) ? "app" : (firstId(bundleId) ? "bundle" : "package")
-  var title = matchTitle(block)
-  var href = decodeHtml(matchAttr(block, "href"))
   return {
     id: id,
-    kind: kind,
-    title: title || fallbackTitle(kind, id),
-    url: cleanStoreUrl(href) || fallbackUrl(kind, id)
+    title: matchTitle(block) || "Steam " + id,
+    url: cleanStoreUrl(decodeHtml(matchAttr(block, "href"))) || SEARCH_URL
   }
 }
 
@@ -121,9 +106,8 @@ function firstId(value) {
 }
 
 function matchAttr(text, name) {
-  var match = String(text || "").match(new RegExp(name + '\\s*=\\s*"([^"]*)"', "i"))
-  if (match) return match[1]
-  match = String(text || "").match(new RegExp(name + "\\s*=\\s*'([^']*)'", "i"))
+  var match = String(text || "").match(
+    new RegExp(name + '\\s*=\\s*["\']([^"\']*)["\']', "i"))
   return match ? match[1] : ""
 }
 
@@ -138,8 +122,6 @@ function decodeHtml(value) {
     .replace(/&nbsp;/gi, " ")
     .replace(/&amp;/gi, "&")
     .replace(/&quot;/gi, "\"")
-    .replace(/&#39;/g, "'")
-    .replace(/&#039;/g, "'")
     .replace(/&lt;/gi, "<")
     .replace(/&gt;/gi, ">")
     .replace(/&#(\d+);/g, function(_, code) {
@@ -153,18 +135,6 @@ function cleanStoreUrl(href) {
   var query = url.indexOf("?")
   if (query >= 0) url = url.slice(0, query)
   return url
-}
-
-function fallbackUrl(kind, id) {
-  if (kind === "bundle") return "https://store.steampowered.com/bundle/" + id + "/"
-  if (kind === "package") return "https://store.steampowered.com/sub/" + id + "/"
-  return "https://store.steampowered.com/app/" + id + "/"
-}
-
-function fallbackTitle(kind, id) {
-  if (kind === "bundle") return "Steam bundle " + id
-  if (kind === "package") return "Steam package " + id
-  return "Steam app " + id
 }
 
 function parseSeen(raw) {
@@ -250,7 +220,7 @@ function notificationArgs(alert) {
   return [
     "omarchy-notification-send",
     "--app-name", "Steam Sniper",
-    "-g", barIcon(),
+    "-g", BAR_ICON,
     "-u", "normal",
     "-t", "12000",
     String(alert.title || "Free game on Steam"),
@@ -300,8 +270,4 @@ function ageLabel(ms) {
   var hours = Math.floor(minutes / 60)
   if (hours < 24) return hours + "h"
   return Math.floor(hours / 24) + "d"
-}
-
-function barIcon() {
-  return "\u{F1B6}"
 }

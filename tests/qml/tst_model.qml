@@ -26,6 +26,7 @@ Item {
       verify(Model.SEARCH_URL.indexOf("maxprice=free") >= 0)
       verify(Model.SEARCH_URL.indexOf("specials=1") >= 0)
       verify(Model.SEARCH_URL.indexOf("category1=998") >= 0)
+      verify(Model.RESULTS_URL.indexOf("maxprice=free") >= 0)
       compare(Model.resultsUrl(""), Model.RESULTS_URL)
       compare(Model.searchUrl("us"), Model.SEARCH_URL + "&cc=US")
       compare(Model.normalizeCountry("de"), "DE")
@@ -54,50 +55,48 @@ Item {
         start: -1
       }))
       verify(parsed)
-      compare(parsed.games.length, 0)
-      compare(parsed.total, 0)
+      compare(parsed.length, 0)
     }
 
     function test_invalid_payload_is_not_an_empty_store() {
       compare(Model.parseSearchPayload(""), null)
       compare(Model.parseSearchPayload("{"), null)
       compare(Model.parseSearchPayload("[]"), null)
+      compare(Model.parseSearchPayload("<a class=\"search_result_row\"></a>"), null)
     }
 
     function test_parses_app_title_and_strips_tracking() {
       var parsed = Model.parseSearchPayload(payload(
         row(108600, "Project Zomboid")))
-      compare(parsed.games.length, 1)
-      compare(parsed.games[0].id, "108600")
-      compare(parsed.games[0].kind, "app")
-      compare(parsed.games[0].title, "Project Zomboid")
-      compare(parsed.games[0].url, "https://store.steampowered.com/app/108600/Example/")
+      compare(parsed.length, 1)
+      compare(parsed[0].id, "108600")
+      compare(parsed[0].title, "Project Zomboid")
+      compare(parsed[0].url, "https://store.steampowered.com/app/108600/Example/")
     }
 
     function test_decodes_entities_and_deduplicates() {
-      var parsed = Model.parseSearchPayload(
-        row(1, "Hades &amp; II") + row(1, "Hades &amp; II") + row(2, "Celeste"))
-      compare(parsed.games.length, 2)
-      compare(parsed.games[0].title, "Hades & II")
-      compare(parsed.games[1].id, "2")
+      var parsed = Model.parseSearchPayload(payload(
+        row(1, "Hades &amp; II") + row(1, "Hades &amp; II") + row(2, "Celeste"), 2))
+      compare(parsed.length, 2)
+      compare(parsed[0].title, "Hades & II")
+      compare(parsed[1].id, "2")
     }
 
     function test_parses_bundle_and_package_ids() {
-      var html = '<a href="https://store.steampowered.com/bundle/12/Pack/?snr=x" '
+      var parsed = Model.parseSearchPayload(payload(
+        '<a href="https://store.steampowered.com/bundle/12/Pack/?snr=x" '
         + 'data-ds-bundleid="12" class="search_result_row">'
         + '<span class="title">Bundle</span></a>'
         + '<a href="https://store.steampowered.com/sub/99/Sub/?snr=x" '
         + 'data-ds-packageid="99" class="search_result_row">'
-        + '<span class="title">Package</span></a>'
-      var parsed = Model.parseSearchPayload(html)
-      compare(parsed.games[0].kind, "bundle")
-      compare(parsed.games[0].url, "https://store.steampowered.com/bundle/12/Pack/")
-      compare(parsed.games[1].kind, "package")
-      compare(parsed.games[1].id, "99")
+        + '<span class="title">Package</span></a>', 2))
+      compare(parsed[0].id, "12")
+      compare(parsed[0].url, "https://store.steampowered.com/bundle/12/Pack/")
+      compare(parsed[1].id, "99")
     }
 
     function test_first_snapshot_never_notifies() {
-      var games = Model.parseSearchPayload(payload(row(1, "Hades"))).games
+      var games = Model.parseSearchPayload(payload(row(1, "Hades")))
       var first = Model.transitionAlerts(Model.emptyWatchState(), games, true)
       compare(first.alerts.length, 0)
       verify(first.state.primed)
@@ -105,8 +104,8 @@ Item {
     }
 
     function test_new_games_notify_and_gone_games_can_return() {
-      var hades = Model.parseSearchPayload(payload(row(1, "Hades"))).games
-      var both = Model.parseSearchPayload(payload(row(1, "Hades") + row(2, "Celeste"), 2)).games
+      var hades = Model.parseSearchPayload(payload(row(1, "Hades")))
+      var both = Model.parseSearchPayload(payload(row(1, "Hades") + row(2, "Celeste"), 2))
       var primed = Model.transitionAlerts(Model.emptyWatchState(), hades, true).state
 
       var appeared = Model.transitionAlerts(primed, both, true)
@@ -123,7 +122,7 @@ Item {
     }
 
     function test_notifications_can_be_disabled() {
-      var next = Model.parseSearchPayload(payload(row(2, "Celeste"))).games
+      var next = Model.parseSearchPayload(payload(row(2, "Celeste")))
       var primed = { primed: true, ids: {} }
       compare(Model.transitionAlerts(primed, next, false).alerts.length, 0)
     }

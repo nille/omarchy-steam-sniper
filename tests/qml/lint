@@ -13,6 +13,4 @@ ln -s "$shell_dir/Commons" "$shim/qs/Commons"
 
 exec /usr/lib/qt6/bin/qmllint -I "$shim" \
   "$root/Panel.qml" \
-  "$root/WrappingPanelHero.qml" \
-  "$root/tests/qml/tst_wrapping_panel_hero.qml" \
   "$root/tests/harness/shell.qml"

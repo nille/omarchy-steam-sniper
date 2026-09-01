@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.0
+
+Internal simplification. No change to what the widget does.
+
+### Changed
+
+- Removed the `show`, `hide`, and `state` IPC calls. `open`, `close`,
+  `toggle`, and `refresh` are unchanged.
+- Cut roughly a third of the code: the status hero is inlined, the async
+  bookkeeping flags are gone, and the parser only accepts Steam's JSON.
+
 ## 1.0.0
 
 First stable release.

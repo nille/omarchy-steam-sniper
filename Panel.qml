@@ -6,7 +6,6 @@ import Quickshell
 import Quickshell.Io
 import qs.Commons
 import qs.Ui
-import "." as SteamSniper
 import "Model.js" as Model
 
 // Watch Steam's free-specials search and notify when a newly free game
@@ -25,7 +24,6 @@ Panel {
   property string seenFilePath: ""
 
   readonly property color foreground: bar ? bar.foreground : Color.foreground
-  readonly property color accent: Color.accent
   readonly property color urgent: bar ? bar.urgent : Color.urgent
   readonly property color dim: Qt.darker(foreground, 1.55)
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
@@ -40,10 +38,7 @@ Panel {
   property var games: []
   property var watchState: Model.emptyWatchState()
   property bool seenLoaded: false
-  property var pendingSnapshot: null
   property bool requestInFlight: false
-  property bool refreshPulse: false
-  property bool refreshQueued: false
   property string lastError: ""
   property double lastSuccessAt: 0
   property double nowMs: Date.now()
@@ -61,10 +56,6 @@ Panel {
     if (seenLoaded) return
     watchState = Model.parseSeen(raw)
     seenLoaded = true
-    if (pendingSnapshot) {
-      applySnapshot(pendingSnapshot)
-      pendingSnapshot = null
-    }
   }
 
   function persistSeen() {
@@ -73,44 +64,27 @@ Panel {
   }
 
   function refresh() {
-    if (requestInFlight) {
-      refreshQueued = true
-      return
-    }
+    if (requestInFlight) return
     requestInFlight = true
-    refreshPulse = true
-    refreshQueued = false
     lastError = ""
     fetchProc.command = Model.fetchArgs(Model.resultsUrl(country))
     fetchProc.running = true
-    refreshPulseTimer.restart()
   }
 
+  // An unloaded seen.json is not primed, so it cannot false-alarm here; the
+  // file wins once it loads and the next refresh compares against it.
   function publish(raw) {
     var parsed = Model.parseSearchPayload(raw)
     if (!parsed) {
       finishFailure("Steam returned invalid data")
       return
     }
-    if (!seenLoaded) {
-      pendingSnapshot = parsed
-      requestInFlight = false
-      if (!refreshPulseTimer.running) refreshPulse = false
-      retryDelayMs = 30000
-      retryTimer.stop()
-      if (refreshQueued) refresh()
-      return
-    }
-    applySnapshot(parsed)
-  }
 
-  function applySnapshot(parsed) {
-    games = parsed.games
+    games = parsed
     lastSuccessAt = Date.now()
     nowMs = lastSuccessAt
     lastError = ""
     requestInFlight = false
-    if (!refreshPulseTimer.running) refreshPulse = false
     retryDelayMs = 30000
     retryTimer.stop()
 
@@ -119,24 +93,19 @@ Panel {
     watchState = transition.state
     persistSeen()
 
-    if (transition.alerts.length > 0) {
-      var argv = Model.notificationArgs(
-        Model.notificationFor(transition.alerts, country))
-      if (argv) Quickshell.execDetached(argv)
-    }
+    var argv = Model.notificationArgs(
+      Model.notificationFor(transition.alerts, country))
+    if (argv) Quickshell.execDetached(argv)
 
-    clampCursor()
-    if (refreshQueued) refresh()
+    setCursor(selectedIndex)
   }
 
   function finishFailure(message) {
     requestInFlight = false
-    if (!refreshPulseTimer.running) refreshPulse = false
     lastError = String(message || "Could not reach Steam")
     retryTimer.interval = retryDelayMs
     retryTimer.restart()
     retryDelayMs = Math.min(15 * 60 * 1000, retryDelayMs * 2)
-    if (refreshQueued) refresh()
   }
 
   function openStore() {
@@ -149,16 +118,7 @@ Panel {
   }
 
   function setCursor(index) {
-    cursorActive = true
     selectedIndex = Math.max(0, Math.min(Math.max(0, games.length - 1), index))
-  }
-
-  function moveCursor(delta) {
-    setCursor(selectedIndex + delta)
-  }
-
-  function clampCursor() {
-    selectedIndex = Math.max(0, Math.min(Math.max(0, games.length - 1), selectedIndex))
   }
 
   function selectedGame() {
@@ -170,17 +130,8 @@ Panel {
     target: root.ipcTarget
     function open(): void { root.open() }
     function close(): void { root.close() }
-    function show(): void { root.open() }
-    function hide(): void { root.close() }
     function toggle(): void { root.toggle() }
     function refresh(): string { root.refresh(); return "ok" }
-    function state(): string {
-      return JSON.stringify({
-        games: root.games,
-        error: root.lastError,
-        freshness: root.freshness
-      })
-    }
   }
 
   Process {
@@ -224,12 +175,6 @@ Panel {
   }
 
   Timer {
-    id: refreshPulseTimer
-    interval: 1200
-    onTriggered: if (!root.requestInFlight) root.refreshPulse = false
-  }
-
-  Timer {
     id: retryTimer
     interval: 30000
     onTriggered: root.refresh()
@@ -259,7 +204,7 @@ Panel {
     id: button
     anchors.fill: parent
     bar: root.bar
-    text: Model.barIcon()
+    text: Model.BAR_ICON
     dimmed: !root.hasGames || root.stale
     tooltipText: Model.tooltipText(
       root.games, root.requestInFlight, root.lastError, root.freshness)
@@ -272,7 +217,7 @@ Panel {
   }
 
   SequentialAnimation {
-    running: root.refreshPulse
+    running: root.requestInFlight
     loops: Animation.Infinite
     alwaysRunToEnd: true
     NumberAnimation {
@@ -311,7 +256,7 @@ Panel {
           root.cursorActive = true
           return
         }
-        if (dy !== 0) root.moveCursor(dy)
+        if (dy !== 0) root.setCursor(root.selectedIndex + dy)
       }
       onActivateRequested: {
         var game = root.selectedGame()
@@ -339,25 +284,57 @@ Panel {
           width: scrollArea.availableWidth
           spacing: Style.spacing.panelGap
 
-          SteamSniper.WrappingPanelHero {
+          Item {
+            id: hero
+            readonly property color tint:
+              root.lastError && !root.hasGames ? root.urgent : root.foreground
             width: parent.width
-            title: Model.statusTitle(
-              root.games, root.requestInFlight, root.lastError)
-            meta: Model.statusDetail(
-              root.games, root.requestInFlight, root.lastError, root.freshness)
-            foreground: root.lastError && !root.hasGames ? root.urgent : root.foreground
-            fontFamily: root.fontFamily
-            titleFontSize: Style.font.title
-            metaFontSize: Style.font.caption
-            iconGap: Style.space(14)
-            labelGap: Style.space(2)
+            implicitHeight: Math.max(heroIcon.implicitHeight,
+                                     heroLabels.implicitHeight)
 
-            iconComponent: Component {
+            Text {
+              id: heroIcon
+              anchors.left: parent.left
+              anchors.verticalCenter: parent.verticalCenter
+              text: Model.BAR_ICON
+              color: hero.tint
+              font.family: "JetBrainsMono Nerd Font"
+              font.pixelSize: Style.font.display
+            }
+
+            Column {
+              id: heroLabels
+              anchors.left: heroIcon.right
+              anchors.leftMargin: Style.space(14)
+              anchors.right: parent.right
+              anchors.verticalCenter: parent.verticalCenter
+              spacing: Style.space(2)
+
               Text {
-                text: Model.barIcon()
-                color: root.lastError && !root.hasGames ? root.urgent : root.foreground
-                font.family: "JetBrainsMono Nerd Font"
-                font.pixelSize: Style.font.display
+                width: parent.width
+                textFormat: Text.PlainText
+                text: Model.statusTitle(
+                  root.games, root.requestInFlight, root.lastError)
+                color: hero.tint
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.title
+                font.bold: true
+                elide: Text.ElideRight
+              }
+
+              // Wraps rather than elides: the empty state is a full sentence.
+              Text {
+                width: parent.width
+                textFormat: Text.PlainText
+                visible: text !== ""
+                text: Model.statusDetail(root.games, root.requestInFlight,
+                                         root.lastError, root.freshness).toUpperCase()
+                color: Qt.darker(hero.tint, 1.4)
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.caption
+                font.bold: true
+                font.letterSpacing: 1.2
+                wrapMode: Text.WordWrap
               }
             }
           }
@@ -394,6 +371,7 @@ Panel {
                 anchors.leftMargin: Style.spacing.sm
                 anchors.rightMargin: Style.spacing.sm
                 text: gameRow.modelData.title
+                textFormat: Text.PlainText
                 color: root.foreground
                 font.family: root.fontFamily
                 font.pixelSize: Style.font.bodySmall
@@ -428,7 +406,7 @@ Panel {
             iconText: "\u{F03CC}"
             bordered: true
             foreground: root.foreground
-            accent: root.accent
+            accent: Color.accent
             fontFamily: root.fontFamily
             onClicked: root.openStore()
           }
