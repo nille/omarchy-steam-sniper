@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec env -u QT_QPA_PLATFORMTHEME \
+  QT_QPA_PLATFORM=offscreen \
+  QT_QUICK_BACKEND=software \
+  /usr/lib/qt6/bin/qmltestrunner -input "$here"

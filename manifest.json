@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "id": "nille.steam-sniper",
+  "name": "Steam Sniper",
+  "version": "0.1.0",
+  "author": "nille",
+  "license": "MIT",
+  "description": "Notify when games are free on the Steam store.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Steam Sniper",
+    "description": "Watch Steam for games that are currently free and notify when new ones appear.",
+    "category": "Info",
+    "aliases": [
+      "steam",
+      "free games",
+      "steam sale",
+      "steam specials",
+      "sniper"
+    ],
+    "defaultSection": "right",
+    "allowMultiple": false,
+    "defaults": {
+      "refreshMinutes": 15,
+      "hideWhenEmpty": false,
+      "notificationsEnabled": true,
+      "country": ""
+    },
+    "schema": [
+      {
+        "key": "refreshMinutes",
+        "type": "integer",
+        "label": "Refresh interval (minutes)",
+        "min": 5,
+        "max": 180,
+        "step": 5,
+        "defaultValue": 15,
+        "description": "How often to check Steam for free games."
+      },
+      {
+        "key": "hideWhenEmpty",
+        "type": "boolean",
+        "label": "Hide when nothing is free",
+        "defaultValue": false,
+        "description": "Remove the bar icon when Steam has no free games, instead of showing a dimmed one."
+      },
+      {
+        "key": "notificationsEnabled",
+        "type": "boolean",
+        "label": "Desktop notifications",
+        "defaultValue": true,
+        "description": "Notify when a newly free game appears."
+      },
+      {
+        "key": "country",
+        "type": "string",
+        "label": "Steam country code",
+        "defaultValue": "",
+        "description": "Optional two-letter Steam store country (US, DE, GB). Leave empty to let Steam choose from your network."
+      }
+    ]
+  }
+}
