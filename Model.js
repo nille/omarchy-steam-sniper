@@ -271,7 +271,7 @@ function statusTitle(games, busy, error) {
 function statusDetail(games, busy, error, freshness) {
   if (busy && (!games || games.length === 0)) return "Looking for 100% off Steam games"
   if (error && (!games || games.length === 0)) return String(error)
-  if (!games || games.length === 0) return "Steam will notify you when a game is free"
+  if (!games || games.length === 0) return "I will notify you when a game is free"
   return freshness || ""
 }
 
