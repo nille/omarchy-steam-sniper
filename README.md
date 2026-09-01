@@ -1,5 +1,9 @@
 # Steam Sniper for Omarchy
 
+[![Omarchy plugin](https://img.shields.io/badge/Omarchy-plugin-7aa2f7)](https://omarchy.org/)
+[![Version](https://img.shields.io/badge/version-1.0.0-9ece6a)](manifest.json)
+[![License](https://img.shields.io/badge/license-MIT-c0caf5)](LICENSE)
+
 A small Quickshell bar widget that watches Steam for games that are currently
 free and notifies you when a new one appears.
 
