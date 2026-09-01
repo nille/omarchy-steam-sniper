@@ -125,6 +125,28 @@ Item {
       compare(Model.parseSearchPayload(new Array(4000010).join("y")), null)
     }
 
+    function test_titles_cannot_carry_markup_or_control_bytes() {
+      var parsed = Model.parseSearchPayload(payload(
+        row(3, '&lt;a href=&quot;https://evil.example&quot;&gt;Claim&lt;/a&gt;'
+             + '&#0;&#10;Deal')))
+      compare(parsed[0].title.indexOf("<"), -1)
+      compare(parsed[0].title.indexOf(">"), -1)
+      compare(parsed[0].title.indexOf("\u0000"), -1)
+      compare(parsed[0].title.indexOf("\n"), -1)
+    }
+
+    function test_headline_never_lands_in_option_position() {
+      function headlineOf(title) {
+        var args = Model.notificationArgs({ title: title, body: "b" })
+        return args[args.indexOf("--exec") - 2]
+      }
+      compare(headlineOf("-u"), "u")
+      compare(headlineOf("--glyph=x"), "glyph=x")
+      compare(headlineOf("-p"), "p")
+      compare(headlineOf("---"), "Free game on Steam")
+      compare(headlineOf("Hades II"), "Hades II")
+    }
+
     function test_first_snapshot_never_notifies() {
       var games = Model.parseSearchPayload(payload(row(1, "Hades")))
       var first = Model.transitionAlerts(Model.emptyWatchState(), games, true)

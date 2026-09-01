@@ -9,6 +9,7 @@ var BAR_ICON = "\u{F1B6}"
 var MAX_BYTES = 4000000
 var MAX_ROWS = 200
 var MAX_TITLE = 120
+var MAX_BLOCK = 20000
 // Everything parsed out of the response is attacker-controlled if Steam is
 // ever wrong: game.url reaches omarchy-launch-browser and the notification
 // --exec, so nothing but a canonical Steam store URL may leave here.
@@ -40,7 +41,9 @@ function resultsUrl(country) {
 
 function fetchArgs(url) {
   return [
-    "curl", "-fsS", "--compressed", "--max-time", "20",
+    // No --compressed: --max-filesize caps the bytes on the wire, so a
+    // compressed response could still expand past MAX_BYTES in memory.
+    "curl", "-fsS", "--max-time", "20",
     "--max-filesize", String(MAX_BYTES),
     "-A", USER_AGENT,
     "-H", "Accept: application/json,text/html;q=0.9",
@@ -119,10 +122,16 @@ function matchAttr(text, name) {
   return match ? match[1] : ""
 }
 
+// The notification server advertises body-markup and body-hyperlinks, and
+// decodeHtml turns "&lt;b&gt;" back into a live tag, so angle brackets and
+// control characters are stripped here — the one place every sink reads from.
 function matchTitle(text) {
-  var match = String(text || "").match(/<span[^>]*class="[^"]*\btitle\b[^"]*"[^>]*>([\s\S]*?)<\/span>/i)
+  var block = String(text || "").slice(0, MAX_BLOCK)
+  var match = block.match(/<span[^>]*class="[^"]*\btitle\b[^"]*"[^>]*>([\s\S]*?)<\/span>/i)
   if (!match) return ""
   return decodeHtml(match[1].replace(/<[^>]+>/g, ""))
+    .replace(/[<>]/g, "")
+    .replace(/[\u0000-\u001f\u007f-\u009f]/g, " ")
     .replace(/\s+/g, " ").trim().slice(0, MAX_TITLE)
 }
 
@@ -223,15 +232,19 @@ function notificationFor(alerts, country) {
   }
 }
 
+// The headline sits in omarchy-notification-send's option position, which is
+// parsed before the positional is captured, so a title that is exactly a known
+// flag would be eaten as one. Leading dashes never survive into that slot.
 function notificationArgs(alert) {
   if (!alert) return null
+  var headline = String(alert.title || "").replace(/^-+/, "").trim()
   return [
     "omarchy-notification-send",
     "--app-name", "Steam Sniper",
     "-g", BAR_ICON,
     "-u", "normal",
     "-t", "12000",
-    String(alert.title || "Free game on Steam"),
+    headline || "Free game on Steam",
     String(alert.body || ""),
     "--exec", "omarchy-launch-browser", String(alert.url || SEARCH_URL)
   ]

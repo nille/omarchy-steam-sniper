@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.1.2
+
+Second pass over the untrusted-input paths, found by auditing every sink
+rather than only the one review flagged.
+
+### Fixed
+
+- Game titles can no longer carry markup or control bytes. The notification
+  server advertises `body-markup` and `body-hyperlinks`, and entity decoding
+  turned an escaped tag back into a live one, so a title could render a link
+  or an image inside a system notification.
+- A title that is exactly a known `omarchy-notification-send` flag (`-u`,
+  `--glyph=…`) no longer reaches its option position, where it either
+  suppressed the notification or overrode its glyph.
+- Dropped `--compressed`: the download cap counts bytes on the wire, so a
+  compressed response could still expand past it in memory.
+- Capped the text a single row's title regex scans, bounding its backtracking.
+
 ## 1.1.1
 
 Hardens everything parsed out of Steam's response, from marketplace review
