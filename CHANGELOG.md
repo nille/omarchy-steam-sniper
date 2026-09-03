@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.4
+
+### Fixed
+
+- Fetch output is now capped in-process by `capped-run`, so a chunked or
+  MITM response cannot fill the shell just because `Content-Length` is
+  missing.
+- Quit only calls `Qt.quit()` in the live-data harness
+  (`STEAM_SNIPER_HARNESS=1`), never in the desktop shell.
+
 ## 1.1.3
 
 `seen.json` is no longer read or written through `FileView`.

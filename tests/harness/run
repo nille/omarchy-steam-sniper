@@ -18,6 +18,7 @@ ln -s "$shell_dir/Ui" "$shim/qs/Ui"
 ln -s "$shell_dir/Commons" "$shim/qs/Commons"
 
 QML_IMPORT_PATH="$shim${QML_IMPORT_PATH:+:$QML_IMPORT_PATH}" \
+STEAM_SNIPER_HARNESS=1 \
 STEAM_SNIPER_DIR="$root" \
 STEAM_SNIPER_STATE="$state" \
   exec quickshell -p "$here/shell.qml" "$@"

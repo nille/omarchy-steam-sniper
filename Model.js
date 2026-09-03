@@ -44,8 +44,8 @@ function resultsUrl(country) {
 
 function fetchArgs(url) {
   return [
-    // No --compressed: --max-filesize caps the bytes on the wire, so a
-    // compressed response could still expand past MAX_BYTES in memory.
+    // No --compressed: --max-filesize is ignored without Content-Length,
+    // so Panel wraps this in capped-run to bound what the collector keeps.
     "curl", "-fsS", "--max-time", "20",
     "--max-filesize", String(MAX_BYTES),
     "-A", USER_AGENT,

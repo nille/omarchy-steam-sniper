@@ -20,8 +20,11 @@ Panel {
   readonly property string stateDir: Quickshell.env("STEAM_SNIPER_STATE")
     || ((Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state"))
         + "/omarchy-steam-sniper")
-  readonly property string storeFile: {
-    var url = String(Qt.resolvedUrl("seen-store"))
+  readonly property string storeFile: pluginFile("seen-store")
+  readonly property string capFile: pluginFile("capped-run")
+
+  function pluginFile(name) {
+    var url = String(Qt.resolvedUrl(name))
     if (url.indexOf("file://") === 0) url = url.slice(7)
     return decodeURIComponent(url)
   }
@@ -71,7 +74,8 @@ Panel {
     if (requestInFlight) return
     requestInFlight = true
     lastError = ""
-    fetchProc.command = Model.fetchArgs(Model.resultsUrl(country))
+    fetchProc.command = ["python3", root.capFile, String(Model.MAX_BYTES)]
+      .concat(Model.fetchArgs(Model.resultsUrl(country)))
     fetchProc.running = true
   }
 
@@ -118,7 +122,7 @@ Panel {
 
   function quit() {
     root.close()
-    if (Quickshell.env("STEAM_SNIPER_DIR")) {
+    if (Quickshell.env("STEAM_SNIPER_HARNESS") === "1") {
       Qt.quit()
       return
     }

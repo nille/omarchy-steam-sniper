@@ -1,7 +1,7 @@
 # Steam Sniper for Omarchy
 
 [![Omarchy plugin](https://img.shields.io/badge/Omarchy-plugin-7aa2f7)](https://omarchy.org/)
-[![Version](https://img.shields.io/badge/version-1.1.3-9ece6a)](manifest.json)
+[![Version](https://img.shields.io/badge/version-1.1.4-9ece6a)](manifest.json)
 [![License](https://img.shields.io/badge/license-MIT-c0caf5)](LICENSE)
 
 A small Quickshell bar widget that watches Steam for games that are currently
@@ -98,6 +98,7 @@ omarchy plugin validate .
 tests/qml/run
 tests/qml/lint
 tests/store/run
+tests/capped/run
 ```
 
 Launch the standalone live-data harness:
@@ -108,8 +109,8 @@ tests/harness/run
 
 `Model.js` contains URL building, HTML/JSON parsing, seen-id transitions,
 and notification copy. `seen-store` pins and publishes `seen.json`.
-`Panel.qml` owns transport, persistence, and rendering. Harness
-notifications are disabled.
+`capped-run` bounds fetch stdout. `Panel.qml` owns transport, persistence,
+and rendering. Harness notifications are disabled.
 
 ## Troubleshooting
 
