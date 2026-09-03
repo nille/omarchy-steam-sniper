@@ -1,7 +1,7 @@
 # Steam Sniper for Omarchy
 
 [![Omarchy plugin](https://img.shields.io/badge/Omarchy-plugin-7aa2f7)](https://omarchy.org/)
-[![Version](https://img.shields.io/badge/version-1.0.0-9ece6a)](manifest.json)
+[![Version](https://img.shields.io/badge/version-1.1.3-9ece6a)](manifest.json)
 [![License](https://img.shields.io/badge/license-MIT-c0caf5)](LICENSE)
 
 A small Quickshell bar widget that watches Steam for games that are currently
@@ -31,7 +31,7 @@ omarchy plugin enable nille.steam-sniper --section right
 ```
 
 No build step, API key, login, helper daemon, or extra package. It uses
-`curl` and `omarchy-notification-send`, both already on Omarchy.
+`curl`, `python3`, and `omarchy-notification-send`, all already on Omarchy.
 
 ## Use
 
@@ -44,6 +44,7 @@ least one claimable game.
 | Middle-click the icon | Refresh immediately |
 | Right-click the icon | Open the Steam search |
 | Click a game | Open that store page |
+| Quit | Disable the widget, or exit the harness |
 | `r` in the panel | Refresh |
 | `o` in the panel | Open the Steam search |
 | `j` / `k` then Enter | Move through the list and open a game |
@@ -96,6 +97,7 @@ rm -rf ~/.local/state/omarchy-steam-sniper
 omarchy plugin validate .
 tests/qml/run
 tests/qml/lint
+tests/store/run
 ```
 
 Launch the standalone live-data harness:
@@ -105,8 +107,9 @@ tests/harness/run
 ```
 
 `Model.js` contains URL building, HTML/JSON parsing, seen-id transitions,
-and notification copy. `Panel.qml` owns transport, persistence, and
-rendering. Harness notifications are disabled.
+and notification copy. `seen-store` pins and publishes `seen.json`.
+`Panel.qml` owns transport, persistence, and rendering. Harness
+notifications are disabled.
 
 ## Troubleshooting
 

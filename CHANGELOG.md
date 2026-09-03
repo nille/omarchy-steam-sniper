@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.1.3
+
+`seen.json` is no longer read or written through `FileView`.
+
+### Added
+
+- Quit in the panel's bottom-right corner disables the widget, or exits
+  the live-data harness.
+
+### Fixed
+
+- Persistence now goes through a pinned `0700` state directory with
+  no-follow type/owner/mode checks, a bounded read, bounded IDs, and an
+  exclusive `0600` temp file renamed into place.
+
 ## 1.1.2
 
 Second pass over the untrusted-input paths, found by auditing every sink

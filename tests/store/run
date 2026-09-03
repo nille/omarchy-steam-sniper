@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+root="$(cd "$here/../.." && pwd)"
+store=(python3 "$root/seen-store")
+work="$(mktemp -d)"
+trap 'rm -rf "$work"' EXIT
+
+fail() { echo "FAIL: $*" >&2; exit 1; }
+ok() { echo "ok $*"; }
+
+dir="$work/state"
+
+out="$("${store[@]}" load "$dir")"
+[[ -z "$out" ]] || fail "missing file should load empty, got: $out"
+[[ "$(stat -c %a "$dir")" == "700" ]] || fail "load did not pin 0700 dir"
+ok "load missing"
+
+payload='{"primed":true,"ids":["1","2"]}'
+printf '%s\n' "$payload" | "${store[@]}" save "$dir"
+got="$("${store[@]}" load "$dir")"
+[[ "$got" == "$payload"$'\n' || "$got" == "$payload" ]] || fail "round trip: $got"
+[[ "$(stat -c %a "$dir/seen.json")" == "600" ]] || fail "save did not publish 0600"
+[[ "$(stat -c %a "$dir")" == "700" ]] || fail "save lost 0700 dir"
+ok "round trip"
+
+rm -rf "$dir"
+mkdir -p "$work/real"
+ln -s "$work/real" "$dir"
+if "${store[@]}" load "$dir" >/dev/null 2>&1; then
+  fail "symlink state dir was accepted"
+fi
+ok "reject symlink dir"
+
+rm -rf "$dir"
+mkdir -m 700 "$dir"
+ln -s /etc/passwd "$dir/seen.json"
+if "${store[@]}" load "$dir" >/dev/null 2>&1; then
+  fail "symlink seen.json was accepted"
+fi
+ok "reject symlink file"
+
+rm -f "$dir/seen.json"
+mkfifo "$dir/seen.json"
+if timeout 2 "${store[@]}" load "$dir" >/dev/null 2>&1; then
+  fail "fifo seen.json was accepted"
+fi
+ok "reject fifo"
+
+rm -f "$dir/seen.json"
+python3 -c "import os,sys; p=sys.argv[1]; os.makedirs(os.path.dirname(p),exist_ok=True); open(p,'wb').write(b'x'*9000)" "$dir/seen.json"
+chmod 600 "$dir/seen.json"
+if "${store[@]}" load "$dir" >/dev/null 2>&1; then
+  fail "oversized seen.json was accepted"
+fi
+ok "reject oversized"
+
+python3 -c "import sys; sys.stdout.buffer.write(b'x'*9000+b'\n')" | if "${store[@]}" save "$dir" >/dev/null 2>&1; then
+  fail "oversized save was accepted"
+fi
+ok "reject oversized save"

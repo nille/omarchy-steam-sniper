@@ -20,8 +20,11 @@ Panel {
   readonly property string stateDir: Quickshell.env("STEAM_SNIPER_STATE")
     || ((Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state"))
         + "/omarchy-steam-sniper")
-  readonly property string seenPath: stateDir + "/seen.json"
-  property string seenFilePath: ""
+  readonly property string storeFile: {
+    var url = String(Qt.resolvedUrl("seen-store"))
+    if (url.indexOf("file://") === 0) url = url.slice(7)
+    return decodeURIComponent(url)
+  }
 
   readonly property color foreground: bar ? bar.foreground : Color.foreground
   readonly property color urgent: bar ? bar.urgent : Color.urgent
@@ -59,8 +62,9 @@ Panel {
   }
 
   function persistSeen() {
-    if (!seenLoaded) return
-    seenFile.setText(Model.serializeSeen(watchState) + "\n")
+    if (!seenLoaded || saveSeenProc.running) return
+    saveSeenProc.payload = Model.serializeSeen(watchState) + "\n"
+    saveSeenProc.running = true
   }
 
   function refresh() {
@@ -112,6 +116,15 @@ Panel {
     Quickshell.execDetached(["omarchy-launch-browser", Model.searchUrl(country)])
   }
 
+  function quit() {
+    root.close()
+    if (Quickshell.env("STEAM_SNIPER_DIR")) {
+      Qt.quit()
+      return
+    }
+    Quickshell.execDetached(["omarchy", "plugin", "disable", root.moduleName])
+  }
+
   function openGame(game) {
     var url = game && game.url ? game.url : Model.searchUrl(country)
     Quickshell.execDetached(["omarchy-launch-browser", url])
@@ -135,23 +148,24 @@ Panel {
   }
 
   Process {
-    id: ensureDirProc
-    command: ["mkdir", "-p", root.stateDir]
+    id: loadSeenProc
+    command: ["python3", root.storeFile, "load", root.stateDir]
     running: true
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: root.ingestSeen(text)
+    }
     onExited: function(exitCode) {
-      if (exitCode === 0) root.seenFilePath = root.seenPath
-      else root.ingestSeen("")
+      if (exitCode !== 0) root.ingestSeen("")
     }
   }
 
-  FileView {
-    id: seenFile
-    path: root.seenFilePath
-    watchChanges: false
-    atomicWrites: true
-    printErrors: false
-    onLoaded: if (root.seenFilePath) root.ingestSeen(text())
-    onLoadFailed: if (root.seenFilePath) root.ingestSeen("")
+  Process {
+    id: saveSeenProc
+    property string payload: ""
+    command: ["python3", root.storeFile, "save", root.stateDir]
+    stdinEnabled: true
+    onStarted: write(payload)
   }
 
   Process {
@@ -418,6 +432,22 @@ Panel {
             color: root.dim
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
+          }
+
+          Item {
+            width: parent.width
+            implicitHeight: quitButton.implicitHeight
+
+            Button {
+              id: quitButton
+              anchors.right: parent.right
+              text: "Quit"
+              bordered: true
+              foreground: root.foreground
+              accent: Color.accent
+              fontFamily: root.fontFamily
+              onClicked: root.quit()
+            }
           }
         }
       }

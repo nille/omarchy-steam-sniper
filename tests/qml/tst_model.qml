@@ -207,6 +207,23 @@ Item {
       compare(Model.parseSeen("nope").ids["1"], undefined)
     }
 
+    function test_seen_state_is_bounded() {
+      var ids = []
+      for (var i = 0; i < 250; i++) ids.push(String(i))
+      var parsed = Model.parseSeen(JSON.stringify({ primed: true, ids: ids }))
+      compare(Object.keys(parsed.ids).length, 200)
+      verify(parsed.ids["0"])
+      verify(parsed.ids["199"])
+      compare(parsed.ids["249"], undefined)
+
+      compare(Model.parseSeen(JSON.stringify({ primed: true, ids: ["nope"] })).ids["nope"], undefined)
+      compare(Model.parseSeen(JSON.stringify({ primed: true, ids: ["12345678901"] })).ids["12345678901"], undefined)
+      compare(Model.parseSeen(new Array(20000).join("x")).primed, false)
+
+      var dirty = Model.serializeSeen({ primed: true, ids: { "1": true, "nope": true } })
+      verify(dirty.indexOf("nope") < 0)
+    }
+
     function test_status_and_tooltip() {
       compare(Model.statusTitle([], true, ""), "Checking Steam")
       compare(Model.statusTitle([], false, "timeout"), "Could not reach Steam")

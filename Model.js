@@ -10,6 +10,9 @@ var MAX_BYTES = 4000000
 var MAX_ROWS = 200
 var MAX_TITLE = 120
 var MAX_BLOCK = 20000
+var MAX_SEEN_BYTES = 8192
+var MAX_SEEN_IDS = 200
+var SEEN_ID_RE = /^\d{1,10}$/
 // Everything parsed out of the response is attacker-controlled if Steam is
 // ever wrong: game.url reaches omarchy-launch-browser and the notification
 // --exec, so nothing but a canonical Steam store URL may leave here.
@@ -156,19 +159,22 @@ function cleanStoreUrl(href) {
 
 function parseSeen(raw) {
   var text = String(raw || "").trim()
-  if (!text) return emptyWatchState()
+  if (!text || text.length > MAX_SEEN_BYTES) return emptyWatchState()
   try {
     var data = JSON.parse(text)
     if (!data || typeof data !== "object" || Array.isArray(data))
       return emptyWatchState()
     var ids = {}
+    var n = 0
     var list = Array.isArray(data.ids) ? data.ids : []
-    for (var i = 0; i < list.length; i++) {
+    for (var i = 0; i < list.length && n < MAX_SEEN_IDS; i++) {
       var id = String(list[i] || "")
-      if (id) ids[id] = true
+      if (!SEEN_ID_RE.test(id) || ids[id]) continue
+      ids[id] = true
+      n++
     }
     return {
-      primed: data.primed === true || list.length > 0,
+      primed: data.primed === true || n > 0,
       ids: ids
     }
   } catch (e) {
@@ -180,7 +186,9 @@ function serializeSeen(state) {
   var ids = []
   var source = state && state.ids ? state.ids : {}
   for (var id in source) {
-    if (source[id]) ids.push(String(id))
+    if (!source[id] || !SEEN_ID_RE.test(id)) continue
+    ids.push(id)
+    if (ids.length >= MAX_SEEN_IDS) break
   }
   ids.sort()
   return JSON.stringify({ primed: !!(state && state.primed), ids: ids })
