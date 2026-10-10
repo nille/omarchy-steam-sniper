@@ -5,6 +5,7 @@ import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "Model.js" as Model
 
@@ -29,8 +30,8 @@ Panel {
     return decodeURIComponent(url)
   }
 
-  readonly property color foreground: bar ? bar.foreground : Color.foreground
-  readonly property color urgent: bar ? bar.urgent : Color.urgent
+  readonly property color foreground: bar ? bar.foreground : Commons.Color.foreground
+  readonly property color urgent: bar ? bar.urgent : Commons.Color.urgent
   readonly property color dim: Qt.darker(foreground, 1.55)
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
 
@@ -374,10 +375,10 @@ Panel {
               implicitHeight: Math.max(Style.space(28), gameTitle.implicitHeight + Style.spacing.sm)
               radius: Style.cornerRadius
               color: root.cursorActive && root.selectedIndex === index
-                ? (root.bar ? Style.selectedFillFor(root.bar.foreground, Color.accent)
+                ? (root.bar ? Style.selectedFillFor(root.bar.foreground, Commons.Color.accent)
                             : "transparent")
                 : (rowMouse.containsMouse
-                  ? (root.bar ? Style.hoverFillFor(root.bar.foreground, Color.accent)
+                  ? (root.bar ? Style.hoverFillFor(root.bar.foreground, Commons.Color.accent)
                               : "transparent")
                   : "transparent")
 
@@ -424,7 +425,7 @@ Panel {
             iconText: "\u{F03CC}"
             bordered: true
             foreground: root.foreground
-            accent: Color.accent
+            accent: Commons.Color.accent
             fontFamily: root.fontFamily
             onClicked: root.openStore()
           }
@@ -448,7 +449,7 @@ Panel {
               text: "Quit"
               bordered: true
               foreground: root.foreground
-              accent: Color.accent
+              accent: Commons.Color.accent
               fontFamily: root.fontFamily
               onClicked: root.quit()
             }

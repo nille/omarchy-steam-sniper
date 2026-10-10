@@ -1,22 +1,23 @@
 import QtQuick
 import Quickshell
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 
 ShellRoot {
   FloatingWindow {
     implicitWidth: 520
     implicitHeight: 240
-    color: Color.background
+    color: Commons.Color.background
     visible: true
 
     QtObject {
       id: stubBar
       property string fontFamily: Style.font.family
-      property color foreground: Color.bar.text
-      property color barForeground: Color.bar.text
-      property color background: Color.bar.background
-      property color urgent: Color.bar.active
+      property color foreground: Commons.Color.bar.text
+      property color barForeground: Commons.Color.bar.text
+      property color background: Commons.Color.bar.background
+      property color urgent: Commons.Color.bar.active
       property bool vertical: false
       property int barSize: Style.bar.sizeHorizontal
       property string position: "top"
@@ -42,7 +43,7 @@ ShellRoot {
       anchors.left: parent.left
       anchors.right: parent.right
       height: Style.bar.sizeHorizontal
-      color: Color.bar.background
+      color: Commons.Color.bar.background
 
       Loader {
         id: widgetLoader
